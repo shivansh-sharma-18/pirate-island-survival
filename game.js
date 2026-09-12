@@ -162,10 +162,32 @@ function isInsideIsland(x, y) {
 
 function isPlayerOnIsland(x, y) {
 
-    const centerX = x + player.width / 2;
-    const centerY = y + player.height / 2;
+    const topLeft = isInsideIsland(
+        x,
+        y
+    );
 
-    return isInsideIsland(centerX, centerY);
+    const topRight = isInsideIsland(
+        x + player.width,
+        y
+    );
+
+    const bottomLeft = isInsideIsland(
+        x,
+        y + player.height
+    );
+
+    const bottomRight = isInsideIsland(
+        x + player.width,
+        y + player.height
+    );
+
+    return (
+        topLeft &&
+        topRight &&
+        bottomLeft &&
+        bottomRight
+    );
 }
 
 
