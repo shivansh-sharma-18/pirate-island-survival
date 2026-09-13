@@ -50,6 +50,38 @@ const player = {
 
 
 // =========================
+// Trees
+// =========================
+
+const trees = [
+    {
+        x: 600,
+        y: 500,
+        width: 60,
+        height: 100
+    },
+    {
+        x: 900,
+        y: 700,
+        width: 60,
+        height: 100
+    },
+    {
+        x: 500,
+        y: 1000,
+        width: 60,
+        height: 100
+    },
+    {
+        x: 1000,
+        y: 1100,
+        width: 60,
+        height: 100
+    }
+];
+
+
+// =========================
 // Keyboard Input
 // =========================
 
@@ -139,7 +171,7 @@ function createIslandPath() {
 }
 
 
-// Create the island path once
+// Create island path once
 
 const islandPath = createIslandPath();
 
@@ -158,7 +190,7 @@ function isInsideIsland(x, y) {
 }
 
 
-// Check player's center
+// Check if entire player is on island
 
 function isPlayerOnIsland(x, y) {
 
@@ -192,6 +224,45 @@ function isPlayerOnIsland(x, y) {
 
 
 // =========================
+// Rectangle Collision
+// =========================
+
+function rectanglesOverlap(rect1, rect2) {
+
+    return (
+        rect1.x < rect2.x + rect2.width &&
+        rect1.x + rect1.width > rect2.x &&
+        rect1.y < rect2.y + rect2.height &&
+        rect1.y + rect1.height > rect2.y
+    );
+}
+
+
+// =========================
+// Tree Collision
+// =========================
+
+function isCollidingWithTree(x, y) {
+
+    const futurePlayer = {
+        x: x,
+        y: y,
+        width: player.width,
+        height: player.height
+    };
+
+    for (const tree of trees) {
+
+        if (rectanglesOverlap(futurePlayer, tree)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+// =========================
 // Update Game State
 // =========================
 
@@ -201,45 +272,65 @@ function update(dt) {
     // Player movement
     // -------------------------
 
+    // Move up
+
     if (keys["w"]) {
 
         const newY =
             player.y - player.speed * dt;
 
-        if (isPlayerOnIsland(player.x, newY)) {
+        if (
+            isPlayerOnIsland(player.x, newY) &&
+            !isCollidingWithTree(player.x, newY)
+        ) {
             player.y = newY;
         }
     }
 
+
+    // Move down
 
     if (keys["s"]) {
 
         const newY =
             player.y + player.speed * dt;
 
-        if (isPlayerOnIsland(player.x, newY)) {
+        if (
+            isPlayerOnIsland(player.x, newY) &&
+            !isCollidingWithTree(player.x, newY)
+        ) {
             player.y = newY;
         }
     }
 
+
+    // Move left
 
     if (keys["a"]) {
 
         const newX =
             player.x - player.speed * dt;
 
-        if (isPlayerOnIsland(newX, player.y)) {
+        if (
+            isPlayerOnIsland(newX, player.y) &&
+            !isCollidingWithTree(newX, player.y)
+        ) {
             player.x = newX;
         }
     }
 
+
+    // Move right
 
     if (keys["d"]) {
 
         const newX =
             player.x + player.speed * dt;
 
-        if (isPlayerOnIsland(newX, player.y)) {
+        if (
+            isPlayerOnIsland(newX, player.y) &&
+            !isCollidingWithTree(newX, player.y)
+        ) {
             player.x = newX;
         }
     }
@@ -304,6 +395,42 @@ function update(dt) {
 
 
 // =========================
+// Draw Tree
+// =========================
+
+function drawTree(tree) {
+
+    // Tree trunk
+
+    ctx.fillStyle = "saddlebrown";
+
+    ctx.fillRect(
+        tree.x - camera.x + 20,
+        tree.y - camera.y + 40,
+        20,
+        60
+    );
+
+
+    // Tree leaves
+
+    ctx.fillStyle = "darkgreen";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        tree.x - camera.x + 30,
+        tree.y - camera.y + 30,
+        35,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+}
+
+
+// =========================
 // Draw Game
 // =========================
 
@@ -351,6 +478,15 @@ function draw() {
     ctx.fill(islandPath);
 
     ctx.restore();
+
+
+    // -------------------------
+    // Draw trees
+    // -------------------------
+
+    for (const tree of trees) {
+        drawTree(tree);
+    }
 
 
     // -------------------------
