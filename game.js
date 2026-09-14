@@ -45,6 +45,10 @@ const player = {
 
   // Current weapon
   weapon: "gun",
+
+  // Shooting
+  shootCooldown: 0,
+  shootDelay: 0.2,
 };
 
 // ======================================================
@@ -76,9 +80,7 @@ const terrainImages = {};
 
 const terrainFiles = {
   water: "assets/environment/water/rpgpack_rpgTile013.png",
-
   sand: "assets/environment/terrain/tile_18.png",
-
   grass: "assets/environment/terrain/tile_39.png",
 };
 
@@ -134,7 +136,7 @@ const terrainMap = [
   "WWWWWSSSSSSGGGGGGGGGGGGSSSSWWWW",
   "WWWWWWSSSSSSGGGGGGGGGGSSSSWWWWW",
   "WWWWWWWSSSSSSSSGGGGSSSSSSSWWWWW",
-  "WWWWWWWWSSSSSSSSSSSSSSSSSWWWWW",
+  "WWWWWWWWSSSSSSSSSSSSSSSSSWWWWWW",
   "WWWWWWWWWWSSSSSSSSSSSSSSWWWWWW",
   "WWWWWWWWWWWWSSSSSSSSSSWWWWWWWW",
   "WWWWWWWWWWWWWWSSSSSSWWWWWWWWWW",
@@ -253,7 +255,16 @@ const rocks = [
 const mouse = {
   x: canvas.width / 2,
   y: canvas.height / 2,
+
+  // Is left mouse button being held?
+  leftButtonDown: false,
 };
+
+// ======================================================
+// BULLETS
+// ======================================================
+
+const bullets = [];
 
 // ======================================================
 // KEYBOARD INPUT
@@ -297,6 +308,22 @@ canvas.addEventListener("mousemove", function (event) {
 
   mouse.x = event.clientX - rect.left;
   mouse.y = event.clientY - rect.top;
+});
+
+// ======================================================
+// MOUSE BUTTON
+// ======================================================
+
+canvas.addEventListener("mousedown", function (event) {
+  if (event.button === 0) {
+    mouse.leftButtonDown = true;
+  }
+});
+
+canvas.addEventListener("mouseup", function (event) {
+  if (event.button === 0) {
+    mouse.leftButtonDown = false;
+  }
 });
 
 // ======================================================
@@ -382,7 +409,6 @@ function isCollidingWithTree(x, y) {
       y: tree.y + tree.height - tree.collisionHeight,
 
       width: tree.collisionWidth,
-
       height: tree.collisionHeight,
     };
 
@@ -414,7 +440,6 @@ function isCollidingWithRock(x, y) {
       y: rock.y + (rock.height - rock.collisionHeight) / 2,
 
       width: rock.collisionWidth,
-
       height: rock.collisionHeight,
     };
 
@@ -434,6 +459,55 @@ function isCollidingWithEnvironment(x, y) {
   return isCollidingWithTree(x, y) || isCollidingWithRock(x, y);
 }
 
+// ======================================================
+// BULLET ENVIRONMENT COLLISION
+// ======================================================
+
+function isBulletCollidingWithEnvironment(x, y) {
+  // Check trees
+  for (const tree of trees) {
+    const treeCollisionBox = {
+      x: tree.x + (tree.width - tree.collisionWidth) / 2,
+
+      y: tree.y + tree.height - tree.collisionHeight,
+
+      width: tree.collisionWidth,
+      height: tree.collisionHeight,
+    };
+
+    if (
+      x >= treeCollisionBox.x &&
+      x <= treeCollisionBox.x + treeCollisionBox.width &&
+      y >= treeCollisionBox.y &&
+      y <= treeCollisionBox.y + treeCollisionBox.height
+    ) {
+      return true;
+    }
+  }
+
+  // Check rocks
+  for (const rock of rocks) {
+    const rockCollisionBox = {
+      x: rock.x + (rock.width - rock.collisionWidth) / 2,
+
+      y: rock.y + (rock.height - rock.collisionHeight) / 2,
+
+      width: rock.collisionWidth,
+      height: rock.collisionHeight,
+    };
+
+    if (
+      x >= rockCollisionBox.x &&
+      x <= rockCollisionBox.x + rockCollisionBox.width &&
+      y >= rockCollisionBox.y &&
+      y <= rockCollisionBox.y + rockCollisionBox.height
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
 // ======================================================
 // TRY MOVE PLAYER
 // ======================================================
@@ -458,6 +532,83 @@ function tryMove(newX, newY) {
 }
 
 // ======================================================
+// SHOOT
+// ======================================================
+
+function shoot() {
+  // Don't shoot while weapon is cooling down
+
+  if (player.shootCooldown > 0) {
+    return;
+  }
+
+  const bulletSpeed = 700;
+
+  // Player center
+
+  const playerCenterX = player.x + player.width / 2;
+
+  const playerCenterY = player.y + player.height / 2;
+
+  // Distance from player center to gun barrel
+
+  const gunOffset = 35;
+
+  // Calculate bullet starting position
+
+  const bulletStartX = playerCenterX + Math.cos(player.aimAngle) * gunOffset;
+
+  const bulletStartY = playerCenterY + Math.sin(player.aimAngle) * gunOffset;
+
+  // Create bullet
+
+  const bullet = {
+    x: bulletStartX,
+    y: bulletStartY,
+
+    vx: Math.cos(player.aimAngle) * bulletSpeed,
+
+    vy: Math.sin(player.aimAngle) * bulletSpeed,
+  };
+
+  // Add bullet to bullets array
+
+  bullets.push(bullet);
+
+  // Start shooting cooldown
+
+  player.shootCooldown = player.shootDelay;
+}
+
+// ======================================================
+// UPDATE BULLETS
+// ======================================================
+
+function updateBullets(dt) {
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const bullet = bullets[i];
+
+    bullet.x += bullet.vx * dt;
+    bullet.y += bullet.vy * dt;
+
+    // Check collision with environment
+    if (isBulletCollidingWithEnvironment(bullet.x, bullet.y)) {
+      bullets.splice(i, 1);
+      continue;
+    }
+
+    // Remove bullets outside the world
+    if (
+      bullet.x < 0 ||
+      bullet.x > world.width ||
+      bullet.y < 0 ||
+      bullet.y > world.height
+    ) {
+      bullets.splice(i, 1);
+    }
+  }
+}
+// ======================================================
 // UPDATE GAME
 // ======================================================
 
@@ -465,6 +616,18 @@ function update(dt) {
   // Prevent huge movement if browser lags
 
   dt = Math.min(dt, 0.05);
+
+  // ====================================================
+  // SHOOTING COOLDOWN
+  // ====================================================
+
+  player.shootCooldown -= dt;
+
+  if (player.shootCooldown < 0) {
+    player.shootCooldown = 0;
+  }
+
+  
 
   const movement = player.speed * dt;
 
@@ -476,6 +639,7 @@ function update(dt) {
   // into world coordinates.
 
   const mouseWorldX = mouse.x + camera.x;
+
   const mouseWorldY = mouse.y + camera.y;
 
   // Player center
@@ -490,6 +654,14 @@ function update(dt) {
     mouseWorldY - playerCenterY,
     mouseWorldX - playerCenterX,
   );
+
+  // ====================================================
+  // AUTOMATIC FIRING
+  // ====================================================
+
+  if (mouse.leftButtonDown) {
+    shoot();
+  }
 
   // ====================================================
   // MOVEMENT
@@ -546,6 +718,12 @@ function update(dt) {
   camera.x = Math.max(0, Math.min(camera.x, world.width - canvas.width));
 
   camera.y = Math.max(0, Math.min(camera.y, world.height - canvas.height));
+
+  // ====================================================
+  // BULLET UPDATE
+  // ====================================================
+
+  updateBullets(dt);
 }
 
 // ======================================================
@@ -606,6 +784,7 @@ function drawRock(rock) {
 
 function drawPlayer() {
   const screenX = player.x - camera.x;
+
   const screenY = player.y - camera.y;
 
   // Choose the correct player image
@@ -613,35 +792,87 @@ function drawPlayer() {
   const currentImage = player.weapon === "gun" ? playerGunImage : playerImage;
 
   if (currentImage.complete && currentImage.naturalWidth > 0) {
-  const drawX = screenX - (player.spriteWidth - player.width) / 2;
+    const drawX = screenX - (player.spriteWidth - player.width) / 2;
 
-  const drawY = screenY - (player.spriteHeight - player.height);
+    const drawY = screenY - (player.spriteHeight - player.height);
 
-  const centerX = drawX + player.spriteWidth / 2;
+    const centerX = drawX + player.spriteWidth / 2;
 
-  const centerY = drawY + player.spriteHeight / 2;
+    const centerY = drawY + player.spriteHeight / 2;
 
-  ctx.save();
+    // Save canvas state
 
-  ctx.translate(centerX, centerY);
+    ctx.save();
 
-  ctx.rotate(player.aimAngle);
+    // Move origin to player center
 
-  ctx.drawImage(
-    currentImage,
-    -player.spriteWidth / 2,
-    -player.spriteHeight / 2,
-    player.spriteWidth,
-    player.spriteHeight
-  );
+    ctx.translate(centerX, centerY);
 
-  ctx.restore();
-} else {
+    // Rotate toward mouse
+
+    ctx.rotate(player.aimAngle);
+
+    // Draw player centered
+    // around rotation point
+
+    ctx.drawImage(
+      currentImage,
+      -player.spriteWidth / 2,
+      -player.spriteHeight / 2,
+      player.spriteWidth,
+      player.spriteHeight,
+    );
+
+    // Restore canvas state
+
+    ctx.restore();
+  } else {
     // Temporary fallback
 
     ctx.fillStyle = "green";
 
     ctx.fillRect(screenX, screenY, player.width, player.height);
+  }
+}
+
+// ======================================================
+// DRAW BULLETS
+// ======================================================
+
+function drawBullets() {
+  for (const bullet of bullets) {
+    const screenX = bullet.x - camera.x;
+
+    const screenY = bullet.y - camera.y;
+
+    const bulletLength = 10;
+
+    // Get direction of bullet
+
+    const length = Math.sqrt(bullet.vx * bullet.vx + bullet.vy * bullet.vy);
+
+    const directionX = bullet.vx / length;
+
+    const directionY = bullet.vy / length;
+
+    // Calculate back of bullet
+
+    const tailX = screenX - directionX * bulletLength;
+
+    const tailY = screenY - directionY * bulletLength;
+
+    // Draw bullet
+
+    ctx.beginPath();
+
+    ctx.moveTo(tailX, tailY);
+
+    ctx.lineTo(screenX, screenY);
+
+    ctx.lineWidth = 7;
+    ctx.strokeStyle = "yellow";
+
+    ctx.stroke();
   }
 }
 
@@ -706,15 +937,7 @@ function drawTerrain() {
 
       const screenY = worldY - camera.y;
 
-      ctx.drawImage(
-        image,
-
-        screenX,
-        screenY,
-
-        TILE_SIZE,
-        TILE_SIZE,
-      );
+      ctx.drawImage(image, screenX, screenY, TILE_SIZE, TILE_SIZE);
     }
   }
 }
@@ -724,29 +947,21 @@ function drawTerrain() {
 // ======================================================
 
 function draw() {
-  // ====================================================
-  // CLEAR SCREEN
-  // ====================================================
+  // Clear screen
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // ====================================================
-  // WATER BACKGROUND
-  // ====================================================
+  // Water background
 
   ctx.fillStyle = "#8fd3e6";
 
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // ====================================================
-  // TERRAIN
-  // ====================================================
+  // Terrain
 
   drawTerrain();
 
-  // ====================================================
-  // ENVIRONMENT
-  // ====================================================
+  // Environment
 
   for (const tree of trees) {
     drawTree(tree);
@@ -756,11 +971,13 @@ function draw() {
     drawRock(rock);
   }
 
-  // ====================================================
-  // PLAYER
-  // ====================================================
+  // Player
 
   drawPlayer();
+
+  // Bullets
+
+  drawBullets();
 }
 
 // ======================================================
@@ -769,6 +986,7 @@ function draw() {
 
 window.addEventListener("resize", function () {
   canvas.width = window.innerWidth;
+
   canvas.height = window.innerHeight;
 });
 
