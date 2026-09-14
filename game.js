@@ -40,7 +40,8 @@ const player = {
 
   speed: 300,
 
-  direction: "down",
+  // Player aiming angle
+  aimAngle: 0,
 };
 
 // ======================================================
@@ -233,6 +234,11 @@ const rocks = [
   },
 ];
 
+const mouse = {
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+};
+
 // ======================================================
 // KEYBOARD INPUT
 // ======================================================
@@ -263,6 +269,17 @@ window.addEventListener("keyup", function (event) {
   const key = event.key.toLowerCase();
 
   keys[key] = false;
+});
+
+// ======================================================
+// MOUSE MOVEMENT
+// ======================================================
+
+canvas.addEventListener("mousemove", function (event) {
+  const rect = canvas.getBoundingClientRect();
+
+  mouse.x = event.clientX - rect.left;
+  mouse.y = event.clientY - rect.top;
 });
 
 // ======================================================
@@ -432,6 +449,28 @@ function update(dt) {
   dt = Math.min(dt, 0.05);
 
   const movement = player.speed * dt;
+  // ====================================================
+  // PLAYER AIMING
+  // ====================================================
+
+  // Convert mouse position from screen coordinates
+  // into world coordinates.
+
+  const mouseWorldX = mouse.x + camera.x;
+  const mouseWorldY = mouse.y + camera.y;
+
+  // Player center
+
+  const playerCenterX = player.x + player.width / 2;
+
+  const playerCenterY = player.y + player.height / 2;
+
+  // Calculate angle from player to mouse
+
+  player.aimAngle = Math.atan2(
+    mouseWorldY - playerCenterY,
+    mouseWorldX - playerCenterX,
+  );
 
   // ====================================================
   // UP
@@ -590,22 +629,55 @@ function drawRock(rock) {
 // DRAW PLAYER
 // ======================================================
 
+// ======================================================
+// DRAW PLAYER
+// ======================================================
+
 function drawPlayer() {
   const screenX = player.x - camera.x;
 
   const screenY = player.y - camera.y;
 
   if (playerImage.complete) {
+    const drawX =
+      screenX -
+      (player.spriteWidth - player.width) / 2;
+
+    const drawY =
+      screenY -
+      (player.spriteHeight - player.height);
+
+    // Player sprite center
+
+    const centerX =
+      drawX + player.spriteWidth / 2;
+
+    const centerY =
+      drawY + player.spriteHeight / 2;
+
+    ctx.save();
+
+    // Move canvas origin to player center
+
+    ctx.translate(centerX, centerY);
+
+    // Rotate toward mouse
+
+    ctx.rotate(player.aimAngle);
+
+    // Draw sprite centered on rotation point
+
     ctx.drawImage(
       playerImage,
 
-      screenX - (player.spriteWidth - player.width) / 2,
-
-      screenY - (player.spriteHeight - player.height),
+      -player.spriteWidth / 2,
+      -player.spriteHeight / 2,
 
       player.spriteWidth,
       player.spriteHeight,
     );
+
+    ctx.restore();
   } else {
     // Temporary fallback
 
