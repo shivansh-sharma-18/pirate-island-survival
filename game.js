@@ -1,536 +1,776 @@
 const canvas = document.getElementById("gameCanvas");
-
 const ctx = canvas.getContext("2d");
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-
-// =========================
-// World
-// =========================
+// ======================================================
+// WORLD
+// ======================================================
 
 const world = {
-    width: 3000,
-    height: 2000
+  width: 3000,
+  height: 2000,
 };
 
-
-// =========================
-// Island
-// =========================
-
-const island = {
-    x: 300,
-    y: 200
-};
-
-
-// =========================
-// Camera
-// =========================
+// ======================================================
+// CAMERA
+// ======================================================
 
 const camera = {
-    x: 0,
-    y: 0
+  x: 0,
+  y: 0,
 };
 
-
-// =========================
-// Player
-// =========================
+// ======================================================
+// PLAYER
+// ======================================================
 
 const player = {
-    x: 700,
-    y: 700,
-    width: 50,
-    height: 50,
-    speed: 300
+  x: 700,
+  y: 700,
+
+  // Collision box
+  width: 50,
+  height: 50,
+
+  // Sprite size
+  spriteWidth: 70,
+  spriteHeight: 70,
+
+  speed: 300,
+
+  direction: "down",
 };
 
+// ======================================================
+// PLAYER IMAGE
+// ======================================================
 
-// =========================
-// Trees
-// =========================
+const playerImage = new Image();
 
-const trees = [
-    {
-        x: 600,
-        y: 500,
-        width: 60,
-        height: 100
-    },
-    {
-        x: 900,
-        y: 700,
-        width: 60,
-        height: 100
-    },
-    {
-        x: 500,
-        y: 1000,
-        width: 60,
-        height: 100
-    },
-    {
-        x: 1000,
-        y: 1100,
-        width: 60,
-        height: 100
-    }
+playerImage.src = "assets/player/rotation_pose_set/manBlue_stand.png";
+
+// ======================================================
+// TERRAIN IMAGES
+// ======================================================
+
+const terrainImages = {};
+
+// Only THREE terrain types for now:
+// Water
+// Sand
+// Grass
+
+const terrainFiles = {
+  water: "assets/environment/water/rpgpack_rpgTile013.png",
+
+  sand: "assets/environment/terrain/tile_18.png",
+
+  grass: "assets/environment/terrain/tile_39.png",
+};
+
+// Load terrain images
+for (const [name, path] of Object.entries(terrainFiles)) {
+  const image = new Image();
+
+  image.src = path;
+
+  terrainImages[name] = image;
+}
+
+// ======================================================
+// TERRAIN SETTINGS
+// ======================================================
+
+const TILE_SIZE = 64;
+
+// ======================================================
+// TERRAIN MAP
+// ======================================================
+//
+// W = Water
+// S = Sand
+// G = Grass
+//
+// For now we deliberately use only
+// one image for each terrain type.
+// ======================================================
+
+const terrainMap = [
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWSSSSSSWWWWWWWWWW",
+  "WWWWWWWWWWWWWSSSSSSSSSSSSWWWWWWW",
+  "WWWWWWWWWWWSSSSSSSSSSSSSSSSWWWW",
+  "WWWWWWWWWSSSSSSGGGGSSSSSSSSSWWW",
+  "WWWWWWSSSSSSGGGGGGGGGGSSSSSSSWW",
+  "WWWWWSSSSGGGGGGGGGGGGGGSSSSSSWW",
+  "WWWWSSSSGGGGGGGGGGGGGGGGSSSSSWW",
+  "WWWSSSSGGGGGGGGGGGGGGGGGGSSSSWW",
+  "WWSSSSGGGGGGGGGGGGGGGGGGGGSSSSW",
+  "WWSSSGGGGGGGGGGGGGGGGGGGGGSSSSW",
+  "WSSSSGGGGGGGGGGGGGGGGGGGGGGSSSW",
+  "WSSSGGGGGGGGGGGGGGGGGGGGGGGSSSW",
+  "WSSSGGGGGGGGGGGGGGGGGGGGGGSSSSW",
+  "WSSSSGGGGGGGGGGGGGGGGGGGGGGSSSW",
+  "WWSSSGGGGGGGGGGGGGGGGGGGGGSSSSW",
+  "WWSSSSGGGGGGGGGGGGGGGGGGGGSSSSW",
+  "WWWSSSSGGGGGGGGGGGGGGGGGGSSSSWW",
+  "WWWWSSSSGGGGGGGGGGGGGGGGSSSSWWW",
+  "WWWWSSSSSSGGGGGGGGGGGGGGSSSSWWW",
+  "WWWWWSSSSSSGGGGGGGGGGGGSSSSWWWW",
+  "WWWWWWSSSSSSGGGGGGGGGGSSSSWWWWW",
+  "WWWWWWWSSSSSSSSGGGGSSSSSSSWWWWW",
+  "WWWWWWWWSSSSSSSSSSSSSSSSSWWWWW",
+  "WWWWWWWWWWSSSSSSSSSSSSSSWWWWWW",
+  "WWWWWWWWWWWWSSSSSSSSSSWWWWWWWW",
+  "WWWWWWWWWWWWWWSSSSSSWWWWWWWWWW",
+  "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
 ];
 
+// ======================================================
+// TREE IMAGE
+// ======================================================
 
-// =========================
-// Keyboard Input
-// =========================
+const treeImage = new Image();
+
+treeImage.src = "assets/environment/vegetation/palm_detailed_long.png";
+
+// ======================================================
+// ROCK IMAGE
+// ======================================================
+
+const rockImage = new Image();
+
+rockImage.src = "assets/environment/rocks/formation_rock.png";
+
+// ======================================================
+// TREES
+// ======================================================
+
+const trees = [
+  {
+    x: 600,
+    y: 500,
+
+    width: 100,
+    height: 150,
+
+    collisionWidth: 30,
+    collisionHeight: 35,
+  },
+
+  {
+    x: 900,
+    y: 700,
+
+    width: 100,
+    height: 150,
+
+    collisionWidth: 30,
+    collisionHeight: 35,
+  },
+
+  {
+    x: 500,
+    y: 1000,
+
+    width: 100,
+    height: 150,
+
+    collisionWidth: 30,
+    collisionHeight: 35,
+  },
+
+  {
+    x: 1000,
+    y: 1100,
+
+    width: 100,
+    height: 150,
+
+    collisionWidth: 30,
+    collisionHeight: 35,
+  },
+];
+
+// ======================================================
+// ROCKS
+// ======================================================
+
+const rocks = [
+  {
+    x: 800,
+    y: 450,
+
+    width: 80,
+    height: 60,
+
+    collisionWidth: 60,
+    collisionHeight: 40,
+  },
+
+  {
+    x: 1100,
+    y: 800,
+
+    width: 90,
+    height: 65,
+
+    collisionWidth: 70,
+    collisionHeight: 45,
+  },
+
+  {
+    x: 700,
+    y: 1200,
+
+    width: 75,
+    height: 55,
+
+    collisionWidth: 55,
+    collisionHeight: 35,
+  },
+];
+
+// ======================================================
+// KEYBOARD INPUT
+// ======================================================
 
 const keys = {};
 
 window.addEventListener("keydown", function (event) {
-    keys[event.key] = true;
+  const key = event.key.toLowerCase();
+
+  keys[key] = true;
+
+  // Prevent browser scrolling
+  if (
+    key === "w" ||
+    key === "a" ||
+    key === "s" ||
+    key === "d" ||
+    key === "arrowup" ||
+    key === "arrowdown" ||
+    key === "arrowleft" ||
+    key === "arrowright"
+  ) {
+    event.preventDefault();
+  }
 });
 
 window.addEventListener("keyup", function (event) {
-    keys[event.key] = false;
+  const key = event.key.toLowerCase();
+
+  keys[key] = false;
 });
 
+// ======================================================
+// TERRAIN HELPER
+// ======================================================
 
-// =========================
-// Create Island Path
-// =========================
+function getTerrainTile(row, col) {
+  // Outside map = water
 
-function createIslandPath() {
+  if (
+    row < 0 ||
+    row >= terrainMap.length ||
+    col < 0 ||
+    col >= terrainMap[row].length
+  ) {
+    return "W";
+  }
 
-    const path = new Path2D();
-
-    path.moveTo(
-        island.x + 300,
-        island.y
-    );
-
-    path.quadraticCurveTo(
-        island.x + 550,
-        island.y - 100,
-        island.x + 800,
-        island.y + 100
-    );
-
-    path.quadraticCurveTo(
-        island.x + 1050,
-        island.y + 200,
-        island.x + 1100,
-        island.y + 500
-    );
-
-    path.quadraticCurveTo(
-        island.x + 1050,
-        island.y + 800,
-        island.x + 900,
-        island.y + 1000
-    );
-
-    path.quadraticCurveTo(
-        island.x + 750,
-        island.y + 1250,
-        island.x + 500,
-        island.y + 1400
-    );
-
-    path.quadraticCurveTo(
-        island.x + 250,
-        island.y + 1350,
-        island.x + 100,
-        island.y + 1200
-    );
-
-    path.quadraticCurveTo(
-        island.x - 100,
-        island.y + 950,
-        island.x,
-        island.y + 700
-    );
-
-    path.quadraticCurveTo(
-        island.x,
-        island.y + 450,
-        island.x + 100,
-        island.y + 300
-    );
-
-    path.quadraticCurveTo(
-        island.x + 150,
-        island.y + 100,
-        island.x + 300,
-        island.y
-    );
-
-    path.closePath();
-
-    return path;
+  return terrainMap[row][col];
 }
 
+// ======================================================
+// CHECK IF TERRAIN IS WALKABLE
+// ======================================================
 
-// Create island path once
+function isWalkable(x, y) {
+  const col = Math.floor(x / TILE_SIZE);
+  const row = Math.floor(y / TILE_SIZE);
 
-const islandPath = createIslandPath();
+  const tile = getTerrainTile(row, col);
 
+  // Only sand and grass are walkable
 
-// =========================
-// Island Collision
-// =========================
-
-function isInsideIsland(x, y) {
-
-    return ctx.isPointInPath(
-        islandPath,
-        x,
-        y
-    );
+  return tile === "S" || tile === "G";
 }
 
-
-// Check if entire player is on island
+// ======================================================
+// PLAYER TERRAIN COLLISION
+// ======================================================
 
 function isPlayerOnIsland(x, y) {
+  const topLeft = isWalkable(x, y);
 
-    const topLeft = isInsideIsland(
-        x,
-        y
-    );
+  const topRight = isWalkable(x + player.width - 1, y);
 
-    const topRight = isInsideIsland(
-        x + player.width,
-        y
-    );
+  const bottomLeft = isWalkable(x, y + player.height - 1);
 
-    const bottomLeft = isInsideIsland(
-        x,
-        y + player.height
-    );
+  const bottomRight = isWalkable(x + player.width - 1, y + player.height - 1);
 
-    const bottomRight = isInsideIsland(
-        x + player.width,
-        y + player.height
-    );
-
-    return (
-        topLeft &&
-        topRight &&
-        bottomLeft &&
-        bottomRight
-    );
+  return topLeft && topRight && bottomLeft && bottomRight;
 }
 
-
-// =========================
-// Rectangle Collision
-// =========================
+// ======================================================
+// RECTANGLE COLLISION
+// ======================================================
 
 function rectanglesOverlap(rect1, rect2) {
-
-    return (
-        rect1.x < rect2.x + rect2.width &&
-        rect1.x + rect1.width > rect2.x &&
-        rect1.y < rect2.y + rect2.height &&
-        rect1.y + rect1.height > rect2.y
-    );
+  return (
+    rect1.x < rect2.x + rect2.width &&
+    rect1.x + rect1.width > rect2.x &&
+    rect1.y < rect2.y + rect2.height &&
+    rect1.y + rect1.height > rect2.y
+  );
 }
 
-
-// =========================
-// Tree Collision
-// =========================
+// ======================================================
+// TREE COLLISION
+// ======================================================
 
 function isCollidingWithTree(x, y) {
+  const futurePlayer = {
+    x: x,
+    y: y,
 
-    const futurePlayer = {
-        x: x,
-        y: y,
-        width: player.width,
-        height: player.height
+    width: player.width,
+    height: player.height,
+  };
+
+  for (const tree of trees) {
+    const treeCollisionBox = {
+      x: tree.x + (tree.width - tree.collisionWidth) / 2,
+
+      y: tree.y + tree.height - tree.collisionHeight,
+
+      width: tree.collisionWidth,
+
+      height: tree.collisionHeight,
     };
 
-    for (const tree of trees) {
-
-        if (rectanglesOverlap(futurePlayer, tree)) {
-            return true;
-        }
+    if (rectanglesOverlap(futurePlayer, treeCollisionBox)) {
+      return true;
     }
+  }
 
-    return false;
+  return false;
 }
 
+// ======================================================
+// ROCK COLLISION
+// ======================================================
 
-// =========================
-// Update Game State
-// =========================
+function isCollidingWithRock(x, y) {
+  const futurePlayer = {
+    x: x,
+    y: y,
+
+    width: player.width,
+    height: player.height,
+  };
+
+  for (const rock of rocks) {
+    const rockCollisionBox = {
+      x: rock.x + (rock.width - rock.collisionWidth) / 2,
+
+      y: rock.y + (rock.height - rock.collisionHeight) / 2,
+
+      width: rock.collisionWidth,
+
+      height: rock.collisionHeight,
+    };
+
+    if (rectanglesOverlap(futurePlayer, rockCollisionBox)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// ======================================================
+// ENVIRONMENT COLLISION
+// ======================================================
+
+function isCollidingWithEnvironment(x, y) {
+  return isCollidingWithTree(x, y) || isCollidingWithRock(x, y);
+}
+
+// ======================================================
+// TRY MOVE PLAYER
+// ======================================================
+
+function tryMove(newX, newY) {
+  // First check terrain
+
+  if (!isPlayerOnIsland(newX, newY)) {
+    return false;
+  }
+
+  // Then check trees and rocks
+
+  if (isCollidingWithEnvironment(newX, newY)) {
+    return false;
+  }
+
+  player.x = newX;
+  player.y = newY;
+
+  return true;
+}
+
+// ======================================================
+// UPDATE GAME
+// ======================================================
 
 function update(dt) {
+  // Prevent huge movement if browser lags
+  dt = Math.min(dt, 0.05);
 
-    // -------------------------
-    // Player movement
-    // -------------------------
+  const movement = player.speed * dt;
 
-    // Move up
+  // ====================================================
+  // UP
+  // ====================================================
 
-    if (keys["w"]) {
+  if (keys["w"] || keys["arrowup"]) {
+    const moved = tryMove(player.x, player.y - movement);
 
-        const newY =
-            player.y - player.speed * dt;
-
-        if (
-            isPlayerOnIsland(player.x, newY) &&
-            !isCollidingWithTree(player.x, newY)
-        ) {
-            player.y = newY;
-        }
+    if (moved) {
+      player.direction = "up";
     }
+  }
 
+  // ====================================================
+  // DOWN
+  // ====================================================
 
-    // Move down
+  if (keys["s"] || keys["arrowdown"]) {
+    const moved = tryMove(player.x, player.y + movement);
 
-    if (keys["s"]) {
-
-        const newY =
-            player.y + player.speed * dt;
-
-        if (
-            isPlayerOnIsland(player.x, newY) &&
-            !isCollidingWithTree(player.x, newY)
-        ) {
-            player.y = newY;
-        }
+    if (moved) {
+      player.direction = "down";
     }
+  }
 
+  // ====================================================
+  // LEFT
+  // ====================================================
 
-    // Move left
+  if (keys["a"] || keys["arrowleft"]) {
+    const moved = tryMove(player.x - movement, player.y);
 
-    if (keys["a"]) {
-
-        const newX =
-            player.x - player.speed * dt;
-
-        if (
-            isPlayerOnIsland(newX, player.y) &&
-            !isCollidingWithTree(newX, player.y)
-        ) {
-            player.x = newX;
-        }
+    if (moved) {
+      player.direction = "left";
     }
+  }
 
+  // ====================================================
+  // RIGHT
+  // ====================================================
 
-    // Move right
+  if (keys["d"] || keys["arrowright"]) {
+    const moved = tryMove(player.x + movement, player.y);
 
-    if (keys["d"]) {
-
-        const newX =
-            player.x + player.speed * dt;
-
-        if (
-            isPlayerOnIsland(newX, player.y) &&
-            !isCollidingWithTree(newX, player.y)
-        ) {
-            player.x = newX;
-        }
+    if (moved) {
+      player.direction = "right";
     }
+  }
 
+  // ====================================================
+  // WORLD BOUNDS
+  // ====================================================
 
-    // -------------------------
-    // Keep player inside world
-    // -------------------------
+  if (player.x < 0) {
+    player.x = 0;
+  }
 
-    if (player.x < 0) {
-        player.x = 0;
-    }
+  if (player.x + player.width > world.width) {
+    player.x = world.width - player.width;
+  }
 
-    if (player.x + player.width > world.width) {
-        player.x = world.width - player.width;
-    }
+  if (player.y < 0) {
+    player.y = 0;
+  }
 
-    if (player.y < 0) {
-        player.y = 0;
-    }
+  if (player.y + player.height > world.height) {
+    player.y = world.height - player.height;
+  }
 
-    if (player.y + player.height > world.height) {
-        player.y = world.height - player.height;
-    }
+  // ====================================================
+  // CAMERA FOLLOW
+  // ====================================================
 
+  camera.x = player.x - canvas.width / 2 + player.width / 2;
 
-    // -------------------------
-    // Update camera
-    // -------------------------
+  camera.y = player.y - canvas.height / 2 + player.height / 2;
 
-    camera.x =
-        player.x -
-        canvas.width / 2 +
-        player.width / 2;
+  // ====================================================
+  // CAMERA WORLD BOUNDS
+  // ====================================================
 
-    camera.y =
-        player.y -
-        canvas.height / 2 +
-        player.height / 2;
+  camera.x = Math.max(0, Math.min(camera.x, world.width - canvas.width));
 
-
-    // -------------------------
-    // Keep camera inside world
-    // -------------------------
-
-    camera.x = Math.max(
-        0,
-        Math.min(
-            camera.x,
-            world.width - canvas.width
-        )
-    );
-
-    camera.y = Math.max(
-        0,
-        Math.min(
-            camera.y,
-            world.height - canvas.height
-        )
-    );
+  camera.y = Math.max(0, Math.min(camera.y, world.height - canvas.height));
 }
 
-
-// =========================
-// Draw Tree
-// =========================
+// ======================================================
+// DRAW TREE
+// ======================================================
 
 function drawTree(tree) {
+  const screenX = tree.x - camera.x;
 
-    // Tree trunk
+  const screenY = tree.y - camera.y;
 
-    ctx.fillStyle = "saddlebrown";
+  // Don't draw if completely
+  // outside screen
 
-    ctx.fillRect(
-        tree.x - camera.x + 20,
-        tree.y - camera.y + 40,
-        20,
-        60
+  if (
+    screenX + tree.width < 0 ||
+    screenX > canvas.width ||
+    screenY + tree.height < 0 ||
+    screenY > canvas.height
+  ) {
+    return;
+  }
+
+  if (treeImage.complete) {
+    ctx.drawImage(
+      treeImage,
+
+      screenX,
+      screenY,
+
+      tree.width,
+      tree.height,
     );
-
-
-    // Tree leaves
-
-    ctx.fillStyle = "darkgreen";
-
-    ctx.beginPath();
-
-    ctx.arc(
-        tree.x - camera.x + 30,
-        tree.y - camera.y + 30,
-        35,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.fill();
+  }
 }
 
+// ======================================================
+// DRAW ROCK
+// ======================================================
 
-// =========================
-// Draw Game
-// =========================
+function drawRock(rock) {
+  const screenX = rock.x - camera.x;
 
-function draw() {
+  const screenY = rock.y - camera.y;
 
-    // -------------------------
-    // Clear canvas
-    // -------------------------
+  // Don't draw if completely
+  // outside screen
 
-    ctx.clearRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
+  if (
+    screenX + rock.width < 0 ||
+    screenX > canvas.width ||
+    screenY + rock.height < 0 ||
+    screenY > canvas.height
+  ) {
+    return;
+  }
+
+  if (rockImage.complete) {
+    ctx.drawImage(
+      rockImage,
+
+      screenX,
+      screenY,
+
+      rock.width,
+      rock.height,
     );
+  }
+}
 
+// ======================================================
+// DRAW PLAYER
+// ======================================================
 
-    // -------------------------
-    // Draw water
-    // -------------------------
+function drawPlayer() {
+  const screenX = player.x - camera.x;
 
-    ctx.fillStyle = "lightblue";
+  const screenY = player.y - camera.y;
 
-    ctx.fillRect(
-        -camera.x,
-        -camera.y,
-        world.width,
-        world.height
+  if (playerImage.complete) {
+    ctx.drawImage(
+      playerImage,
+
+      screenX - (player.spriteWidth - player.width) / 2,
+
+      screenY - (player.spriteHeight - player.height),
+
+      player.spriteWidth,
+      player.spriteHeight,
     );
-
-
-    // -------------------------
-    // Draw island
-    // -------------------------
-
-    ctx.fillStyle = "sandybrown";
-
-    ctx.save();
-
-    ctx.translate(
-        -camera.x,
-        -camera.y
-    );
-
-    ctx.fill(islandPath);
-
-    ctx.restore();
-
-
-    // -------------------------
-    // Draw trees
-    // -------------------------
-
-    for (const tree of trees) {
-        drawTree(tree);
-    }
-
-
-    // -------------------------
-    // Draw player
-    // -------------------------
+  } else {
+    // Temporary fallback
 
     ctx.fillStyle = "green";
 
     ctx.fillRect(
-        player.x - camera.x,
-        player.y - camera.y,
-        player.width,
-        player.height
+      screenX,
+      screenY,
+
+      player.width,
+      player.height,
     );
+  }
 }
 
+// ======================================================
+// TERRAIN IMAGE
+// ======================================================
 
-// =========================
-// Game Loop
-// =========================
+function getTerrainImage(row, col) {
+  const tile = getTerrainTile(row, col);
+
+  if (tile === "W") {
+    return terrainImages.water;
+  }
+
+  if (tile === "S") {
+    return terrainImages.sand;
+  }
+
+  if (tile === "G") {
+    return terrainImages.grass;
+  }
+
+  return null;
+}
+
+// ======================================================
+// DRAW TERRAIN
+// ======================================================
+
+function drawTerrain() {
+  // Only draw visible rows
+
+  const startCol = Math.max(0, Math.floor(camera.x / TILE_SIZE) - 1);
+
+  const endCol = Math.min(
+    terrainMap[0].length,
+    Math.ceil((camera.x + canvas.width) / TILE_SIZE) + 1,
+  );
+
+  const startRow = Math.max(0, Math.floor(camera.y / TILE_SIZE) - 1);
+
+  const endRow = Math.min(
+    terrainMap.length,
+    Math.ceil((camera.y + canvas.height) / TILE_SIZE) + 1,
+  );
+
+  for (let row = startRow; row < endRow; row++) {
+    for (let col = startCol; col < endCol; col++) {
+      const image = getTerrainImage(row, col);
+
+      if (!image || !image.complete) {
+        continue;
+      }
+
+      const worldX = col * TILE_SIZE;
+
+      const worldY = row * TILE_SIZE;
+
+      const screenX = worldX - camera.x;
+
+      const screenY = worldY - camera.y;
+
+      ctx.drawImage(
+        image,
+
+        screenX,
+        screenY,
+
+        TILE_SIZE,
+        TILE_SIZE,
+      );
+    }
+  }
+}
+
+// ======================================================
+// DRAW GAME
+// ======================================================
+
+function draw() {
+  // ====================================================
+  // CLEAR SCREEN
+  // ====================================================
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // ====================================================
+  // WATER BACKGROUND
+  // ====================================================
+
+  ctx.fillStyle = "#8fd3e6";
+
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // ====================================================
+  // TERRAIN
+  // ====================================================
+
+  drawTerrain();
+
+  // ====================================================
+  // ENVIRONMENT
+  // ====================================================
+
+  for (const tree of trees) {
+    drawTree(tree);
+  }
+
+  for (const rock of rocks) {
+    drawRock(rock);
+  }
+
+  // ====================================================
+  // PLAYER
+  // ====================================================
+
+  drawPlayer();
+}
+
+// ======================================================
+// WINDOW RESIZE
+// ======================================================
+
+window.addEventListener("resize", function () {
+  canvas.width = window.innerWidth;
+
+  canvas.height = window.innerHeight;
+});
+
+// ======================================================
+// GAME LOOP
+// ======================================================
 
 let lastTime = 0;
 
 function gameLoop(timestamp) {
-
-    if (lastTime === 0) {
-        lastTime = timestamp;
-    }
-
-    const dt =
-        (timestamp - lastTime) / 1000;
-
+  if (lastTime === 0) {
     lastTime = timestamp;
+  }
 
-    update(dt);
+  let dt = (timestamp - lastTime) / 1000;
 
-    draw();
+  lastTime = timestamp;
 
-    requestAnimationFrame(gameLoop);
+  update(dt);
+
+  draw();
+
+  requestAnimationFrame(gameLoop);
 }
 
-
-// =========================
-// Start Game
-// =========================
+// ======================================================
+// START GAME
+// ======================================================
 
 requestAnimationFrame(gameLoop);
