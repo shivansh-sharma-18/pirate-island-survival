@@ -42,6 +42,9 @@ const player = {
 
   // Player aiming angle
   aimAngle: 0,
+
+  // Current weapon
+  weapon: "gun",
 };
 
 // ======================================================
@@ -51,6 +54,14 @@ const player = {
 const playerImage = new Image();
 
 playerImage.src = "assets/player/rotation_pose_set/manBlue_stand.png";
+
+// ======================================================
+// PLAYER GUN IMAGE
+// ======================================================
+
+const playerGunImage = new Image();
+
+playerGunImage.src = "assets/player/rotation_pose_set/manBlue_gun.png";
 
 // ======================================================
 // TERRAIN IMAGES
@@ -72,6 +83,7 @@ const terrainFiles = {
 };
 
 // Load terrain images
+
 for (const [name, path] of Object.entries(terrainFiles)) {
   const image = new Image();
 
@@ -234,6 +246,10 @@ const rocks = [
   },
 ];
 
+// ======================================================
+// MOUSE
+// ======================================================
+
 const mouse = {
   x: canvas.width / 2,
   y: canvas.height / 2,
@@ -251,6 +267,7 @@ window.addEventListener("keydown", function (event) {
   keys[key] = true;
 
   // Prevent browser scrolling
+
   if (
     key === "w" ||
     key === "a" ||
@@ -446,9 +463,11 @@ function tryMove(newX, newY) {
 
 function update(dt) {
   // Prevent huge movement if browser lags
+
   dt = Math.min(dt, 0.05);
 
   const movement = player.speed * dt;
+
   // ====================================================
   // PLAYER AIMING
   // ====================================================
@@ -473,51 +492,23 @@ function update(dt) {
   );
 
   // ====================================================
-  // UP
+  // MOVEMENT
   // ====================================================
 
   if (keys["w"] || keys["arrowup"]) {
-    const moved = tryMove(player.x, player.y - movement);
-
-    if (moved) {
-      player.direction = "up";
-    }
+    tryMove(player.x, player.y - movement);
   }
-
-  // ====================================================
-  // DOWN
-  // ====================================================
 
   if (keys["s"] || keys["arrowdown"]) {
-    const moved = tryMove(player.x, player.y + movement);
-
-    if (moved) {
-      player.direction = "down";
-    }
+    tryMove(player.x, player.y + movement);
   }
-
-  // ====================================================
-  // LEFT
-  // ====================================================
 
   if (keys["a"] || keys["arrowleft"]) {
-    const moved = tryMove(player.x - movement, player.y);
-
-    if (moved) {
-      player.direction = "left";
-    }
+    tryMove(player.x - movement, player.y);
   }
 
-  // ====================================================
-  // RIGHT
-  // ====================================================
-
   if (keys["d"] || keys["arrowright"]) {
-    const moved = tryMove(player.x + movement, player.y);
-
-    if (moved) {
-      player.direction = "right";
-    }
+    tryMove(player.x + movement, player.y);
   }
 
   // ====================================================
@@ -579,15 +570,7 @@ function drawTree(tree) {
   }
 
   if (treeImage.complete) {
-    ctx.drawImage(
-      treeImage,
-
-      screenX,
-      screenY,
-
-      tree.width,
-      tree.height,
-    );
+    ctx.drawImage(treeImage, screenX, screenY, tree.width, tree.height);
   }
 }
 
@@ -613,15 +596,7 @@ function drawRock(rock) {
   }
 
   if (rockImage.complete) {
-    ctx.drawImage(
-      rockImage,
-
-      screenX,
-      screenY,
-
-      rock.width,
-      rock.height,
-    );
+    ctx.drawImage(rockImage, screenX, screenY, rock.width, rock.height);
   }
 }
 
@@ -629,67 +604,44 @@ function drawRock(rock) {
 // DRAW PLAYER
 // ======================================================
 
-// ======================================================
-// DRAW PLAYER
-// ======================================================
-
 function drawPlayer() {
   const screenX = player.x - camera.x;
-
   const screenY = player.y - camera.y;
 
-  if (playerImage.complete) {
-    const drawX =
-      screenX -
-      (player.spriteWidth - player.width) / 2;
+  // Choose the correct player image
 
-    const drawY =
-      screenY -
-      (player.spriteHeight - player.height);
+  const currentImage = player.weapon === "gun" ? playerGunImage : playerImage;
 
-    // Player sprite center
+  if (currentImage.complete && currentImage.naturalWidth > 0) {
+  const drawX = screenX - (player.spriteWidth - player.width) / 2;
 
-    const centerX =
-      drawX + player.spriteWidth / 2;
+  const drawY = screenY - (player.spriteHeight - player.height);
 
-    const centerY =
-      drawY + player.spriteHeight / 2;
+  const centerX = drawX + player.spriteWidth / 2;
 
-    ctx.save();
+  const centerY = drawY + player.spriteHeight / 2;
 
-    // Move canvas origin to player center
+  ctx.save();
 
-    ctx.translate(centerX, centerY);
+  ctx.translate(centerX, centerY);
 
-    // Rotate toward mouse
+  ctx.rotate(player.aimAngle);
 
-    ctx.rotate(player.aimAngle);
+  ctx.drawImage(
+    currentImage,
+    -player.spriteWidth / 2,
+    -player.spriteHeight / 2,
+    player.spriteWidth,
+    player.spriteHeight
+  );
 
-    // Draw sprite centered on rotation point
-
-    ctx.drawImage(
-      playerImage,
-
-      -player.spriteWidth / 2,
-      -player.spriteHeight / 2,
-
-      player.spriteWidth,
-      player.spriteHeight,
-    );
-
-    ctx.restore();
-  } else {
+  ctx.restore();
+} else {
     // Temporary fallback
 
     ctx.fillStyle = "green";
 
-    ctx.fillRect(
-      screenX,
-      screenY,
-
-      player.width,
-      player.height,
-    );
+    ctx.fillRect(screenX, screenY, player.width, player.height);
   }
 }
 
@@ -720,7 +672,7 @@ function getTerrainImage(row, col) {
 // ======================================================
 
 function drawTerrain() {
-  // Only draw visible rows
+  // Only draw visible columns
 
   const startCol = Math.max(0, Math.floor(camera.x / TILE_SIZE) - 1);
 
@@ -728,6 +680,8 @@ function drawTerrain() {
     terrainMap[0].length,
     Math.ceil((camera.x + canvas.width) / TILE_SIZE) + 1,
   );
+
+  // Only draw visible rows
 
   const startRow = Math.max(0, Math.floor(camera.y / TILE_SIZE) - 1);
 
@@ -815,7 +769,6 @@ function draw() {
 
 window.addEventListener("resize", function () {
   canvas.width = window.innerWidth;
-
   canvas.height = window.innerHeight;
 });
 
